@@ -1,0 +1,15 @@
+Basically we are trying to predict whether a given person survived or not (1 or 0). 
+
+So immediately, I'm thinking we use either a logistic regression, random forest, or a linear SVC.
+
+Quirks:
+  - The dataset has a bunch of missing values for age, and cabin. So we are going to have to impute that.
+  - Also the ticket column is very mysterious, sometimes its a number, other times there are random characters in front. Very weird.
+  - 2 missing values for embarked. Gonna have to impute those as well.
+
+
+Moves:
+  - I always break out the categorical variables into their one-hot encoding (Pclass, Sex, Embarked)
+  - I broke the cabin letter out into it's own categorical column
+  - I ignored Name and Ticket Numb
+  - For all other variables, I subtracted the mean, and divided by the variance (Age, SibSp, Parch, Fare)
