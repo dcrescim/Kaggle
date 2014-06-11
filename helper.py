@@ -121,20 +121,28 @@ class Org:
     self.models = []
     self.output = []
     
-  def cross_validate(self, df):
+  def cross_validate(self, df, ravel=True):
     X,Y = self.mapper.fit_transform(df)
+    
+    if ravel:
+      Y = np.ravel(Y)
+
     output = []
     for model in self.models:
-      cv = sklearn.cross_validation.ShuffleSplit(len(X), n_iter=5, test_size=.2, random_state=self.random_seed)
-      scores = sklearn.cross_validation.cross_val_score(model, X, np.ravel(Y), cv=cv)
-      output.append('%0.3f' % scores.mean())
+      cv = sklearn.cross_validation.ShuffleSplit(len(X), n_iter=2, test_size=.2, random_state=self.random_seed)
+      #import ipdb; ipdb.set_trace() 
+      scores = sklearn.cross_validation.cross_val_score(model, X, Y, cv=cv)
+      #output.append('%0.3f' % scores.mean())
+      output.append(scores)
     return output
 
-  def fit(self, df):
+  def fit(self, df, ravel=True):
     X,Y = self.mapper.fit_transform(df)
     for model in self.models:
-      model.fit(X,np.ravel(Y))
-
+      if ravel:
+        model.fit(X,np.ravel(Y))
+      else:
+        model.fit(X, Y)
   def predict(self,df, as_df=False):
     X, _ = self.mapper.fit_transform(df)
     output = []

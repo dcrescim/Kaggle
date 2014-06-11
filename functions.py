@@ -9,7 +9,12 @@ Change Sig (to the one specified by Lecun's paper)
   Error Functions
 '''
 
-class CrossEntropyError:
+class PureObject(object):
+
+  def __eq__(self, other):
+    return (type(self) == type(other))
+
+class CrossEntropyError(PureObject):
 
   @staticmethod
   def func(Y,T):
@@ -25,7 +30,7 @@ class CrossEntropyError:
     denom = 1.0/np.multiply(Y, 1-Y)
     return np.multiply(diff, denom)/rows
 
-class SquaredError:
+class SquaredError(PureObject):
   @staticmethod
   def func(Y,T):
     m = Y.shape[0] * 1.0 # Force into real number
@@ -42,17 +47,9 @@ class SquaredError:
 '''
   Matrix Functions
 '''
-class Identity:
-  @staticmethod
-  def func(x):
-    return x
-
-  @staticmethod
-  def grad(x):
-    return 1
 
 # Make faster Sig as Lecun describes in his paper.
-class Sig:
+class Sig(PureObject):
   @staticmethod
   def func(x):
     return 1/(1+np.exp(-x))
@@ -61,7 +58,7 @@ class Sig:
   def grad(x):
     return multiply(Sig.func(x),1 - Sig.func(x))
 
-class Tanh:
+class Tanh(PureObject):
   @staticmethod
   def func(x):
     return np.tanh(x)
@@ -70,11 +67,11 @@ class Tanh:
   def grad(x):
     return 4/((np.exp(x) + np.exp(-x)))**2
 
-class Rect:
+class Rect(PureObject):
 
   @staticmethod
-  def func(x, theta=0.1):
-    return max(0, x+ np.random.normal(0, theta))
+  def func(x):
+    return max(0, x)
 
   @staticmethod
   def grad(x):
@@ -83,6 +80,12 @@ class Rect:
     else:
       return 0
 
+
+'''
+Maybe make a Rect with optional parameter variance
+'''
+
+
 '''
   One off helper functions
 '''
@@ -90,3 +93,9 @@ class Rect:
 def wrap_variables(*args):
   return map(lambda x: np.nditer(x, ['multi_index'], ['readwrite']), args) 
 
+def coalesce(numpy_arr):
+  pdf_array = np.zeros(numpy_arr.shape)
+  maxes = numpy_arr.argmax(axis=1)
+  for (index,elem) in enumerate(maxes):
+    pdf_array[index,elem] = 1
+  return pdf_array

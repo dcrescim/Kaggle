@@ -11,16 +11,14 @@ import operator
   3. Block Func Layer (Function on local blocks)
   4. Faster Sig Layer(Function on every element)
   5. Functions on random subset (Dropout like functions)
-'''
 
 
-'''
   Alternative Implementation of Layers
 '''
 
-# Covers Tanh, Sig, Rect, Identity layers
-class PureLayer:
-  def __init__(self, mapping=Identity):
+# Covers Tanh, Sig, Rect
+class PureLayer(PureObject):
+  def __init__(self, mapping):
     self.mapping = mapping
 
   def forward(self, X):
@@ -34,11 +32,22 @@ class PureLayer:
     return partials*self.mapping.grad(self.X)
 
   def delta_iterator(self):
-    layer_params = []
-    return map(lambda x: np.nditer(x, ['multi_index'], ['readwrite']), layer_params)
-
+    return []
+    
   def __repr__(self):
     return "Pure Layer: Func = " + str(self.mapping)
+
+class TanhLayer(PureLayer):
+  def __init__(self):
+    super(TanhLayer, self).__init__(mapping=Tanh)
+
+class RectLayer(PureLayer):
+  def __init__(self):
+    super(RectLayer, self).__init__(mapping=Rect)
+
+class SigLayer(PureLayer):
+  def __init__(self):
+    super(SigLayer, self).__init__(mapping=Sig)
 
 # Covers mean layer
 class MeanLayer:
@@ -58,13 +67,12 @@ class MeanLayer:
     return np.kron(partials, np.ones(self.dim))/ self.units_per_block
 
   def delta_iterator(self):
-    layer_params = []
-    return map(lambda x: np.nditer(x, ['multi_index'], ['readwrite']), layer_params)
+    return []
 
   def __repr__(self):
     return "Mean Pooling Layer: Dim = " + str(self.dim)
 
-class DotLayer:
+class DotLayer(object):
   def __init__(self, dim, W = None, b = None):
     if W is None:
       a = 1. / dim[0]
@@ -87,6 +95,7 @@ class DotLayer:
     else:
       self.b = np.copy(b)
 
+    self.dim = dim
   def forward(self, X):
     self.X = X
     return np.dot(X,self.W) + self.b
@@ -105,6 +114,26 @@ class DotLayer:
   def delta_iterator(self):
     layer_params = [self.W, self.b]
     return map(lambda x: np.nditer(x, ['multi_index'], ['readwrite']), layer_params)
+
+  # Returns actual contents. No copies.
+  def get_params(self, deep=True):
+    return {'W' : self.W, 'b' : self.b, 'dim' : self.dim}
+
+  # Writes actual contents. No copies.
+  def set_params(self, **params):
+    for parameter, value in params.items():
+      self.__setattr__(parameter, value)
+
+
+  def __eq__(self, other):
+    return ((type(self) == type(other)) and
+            (np.allclose(self.W, other.W)) and
+            (np.allclose(self.b, other.b))
+           )
+  '''
+  def __repr__(self):
+    return "DotLayer W dim= %s b dim=%s" % (str(self.W.shape), str(self.b.shape))
+  '''
 
 '''
 Simple Convolution Layer dim=2D, numb_kernels = n

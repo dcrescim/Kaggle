@@ -2,23 +2,43 @@ import sklearn
 from sklearn import datasets
 from sklearn.utils import shuffle
 from sklearn.preprocessing import StandardScaler
+from sklearn.base import BaseEstimator
+
 from math import sqrt
 import numpy as np
 from numpy import dot, transpose, multiply
 from layers import *
 from functions import *
+import ipdb
+import copy
 
 epsilon = 10**(-8)
 
-class NN(object):
+'''
+As grid_search.GridSearchCV uses set_params to apply parameter setting to estimators, 
+it is essential that calling set_params has the same effect as setting parameters using 
+the __init__ method. The easiest and recommended way to accomplish this is to not do any 
+parameter validation in ``__init__``. All logic behind estimator parameters, like 
+translating string arguments into functions, should be done in fit.
 
-  def __init__(self,layer_list = [], type='R', lr=0.01, n_iter=1000, minibatch=10):
-    self.layers = []
+http://scikit-learn.org/stable/developers/index.html#cloning
+
+1. Change NN so that it follows the rule above
+2. Change DotLayer so that it follows the rule above
+'''
+
+
+class NN(BaseEstimator):
+
+  def __init__(self,layers = [], type='R', lr=0.01, n_iter=1000, noisy=None, verbose=False):
+    
+    self.layers = copy.deepcopy(layers)
+    self.type = type
     self.lr = lr
     self.n_iter = n_iter
+    self.noisy = noisy
+    self.verbose = verbose
 
-    # Minibatch variables
-    self.minibatch = minibatch
     self.dataset_index = 0
     self.epoch_index = 0
 
@@ -37,87 +57,85 @@ class NN(object):
     current_results = X
     for layer in self.layers:
       current_results = layer.forward(current_results)
+
+    if self.type == 'C':
+      current_results = coalesce(current_results)
     return current_results
 
-  def error(self, X, T):
+  def predict_proba(self, X):
+    current_results = X
+    for layer in self.layers:
+      current_results = layer.forward(current_results)
+    return current_results
+
+  def score(self, X, T):
     Y = self.predict(X)
+    return 1 / (self.error(X,T) + 1)
+
+  def error(self, X, T):
+    Y = self.predict_proba(X)
     return self.error_func.func(Y, T)
 
-  def grab_next_batch(self, X, T):
-    X_batch = X[self.dataset_index: self.dataset_index + self.minibatch]
-    T_batch = T[self.dataset_index: self.dataset_index + self.minibatch]
+  def grab_next(self, X, T):
+    X_next = X[self.dataset_index: self.dataset_index+1]
+    T_next = T[self.dataset_index: self.dataset_index+1]
 
-    self.dataset_index += self.minibatch
+    self.dataset_index += 1
 
-    if (len(X_batch) == 0) or (len(T_batch) == 0):
-      X_batch = X[:self.minibatch]
-      T_batch = T[:self.minibatch]
-
+    if (len(X_next) == 0) or (len(T_next) == 0):
+      X_next = X[0:1]
+      T_next = T[0:1]
+      self.epoch_index += 1
       self.dataset_index = 0
 
-    return X_batch, T_batch
+    return X_next, T_next
 
   # Maybe switch the order of north partial and 
   # west partial if we ever build the zmq version of this
   # For this version switching the order doesn't add any speedup
   def update(self, X, T):
-    #print "in update"
-    X_batch, T_batch = self.grab_next_batch(X,T)
+    #import ipdb; ipdb.set_trace()
+    X_next, T_next = self.grab_next(X,T)
+    #import ipdb; ipdb.set_trace()
+    if self.noisy:
+      X_next += self.noisy*np.random.standard_normal(X_next.shape)
+      #T_next += self.noisy*np.random.standard_normal(T_next.shape)
 
-    Y_batch = self.predict(X_batch)
-    cur_partial = self.error_func.grad(Y_batch,T_batch)*self.lr
+    Y_next = self.predict_proba(X_next)
+    cur_partial = self.error_func.grad(Y_next,T_next)*self.lr
     rev_layers = reversed(self.layers)
     for (index,layer) in enumerate(rev_layers):
 
+      next_partial = layer.west_partial(cur_partial)
       layer.north_partial(cur_partial)
+      cur_partial = next_partial
+      '''
       if index != (len(self.layers) - 1):
         cur_partial = layer.west_partial(cur_partial)
-
+      '''
       
   def fit(self, X, T):
-
+    #ipdb.set_trace()
     for i in xrange(self.n_iter):
-      if (i % 100 == 0):
+      
+      if (self.verbose and (i % 100 == 0)):
         print "Error: %f" % self.error(X,T)
       self.update(X,T)
-
-  def fit_converge(self, X_train, T_train, X_test, T_test):
-    
-    #prev_train_error = self.error(X_train, T_train)
-    prev_test_error = self.error(X_test, T_test)
-      
-
-    while True:
-      for i in range(100):
-        self.update(X_train, T_train)
-
-      train_error = self.error(X_train, T_train)
-      test_error = self.error(X_test, T_test)
-    
-      print "Train Error: " + str(train_error)    
-      print "Test Error: " + str(test_error)    
-
-      print "Previous Error: " + str(prev_test_error)
-
-      if prev_test_error  < test_error:
-        break
-
-      prev_test_error = test_error
-
 
   def list_delta_iterators(self):
     return map(lambda x: x.delta_iterator(), self.layers)
 
   def analytic_gradient(self, X, T):
-    Y = self.predict(X)
+    Y = self.predict_proba(X)
     cur_partial = self.error_func.grad(Y,T)
     rev_layers = reversed(self.layers)
     gradient = []
     for layer in rev_layers:
 
       #Compute the partial north, and west
+      next_partial = layer.west_partial(cur_partial)
       layer_grad = layer.north_partial(cur_partial)      
-      cur_partial = layer.west_partial(cur_partial)
+      cur_partial = next_partial
 
       gradient.append(layer_grad)
 
@@ -146,7 +164,32 @@ class NN(object):
 
     return all_gradients
 
+  '''
+  def fit_converge(self, X_train, T_train, X_test, T_test):
+    
+    #prev_train_error = self.error(X_train, T_train)
+    prev_test_error = self.error(X_test, T_test)
+      
 
+    while True:
+      for i in range(100):
+        self.update(X_train, T_train)
+
+      train_error = self.error(X_train, T_train)
+      test_error = self.error(X_test, T_test)
+    
+      print "Train Error: " + str(train_error)    
+      print "Test Error: " + str(test_error)    
+
+      print "Previous Error: " + str(prev_test_error)
+
+      if prev_test_error  < test_error:
+        break
+
+      prev_test_error = test_error
+
+  '''
+'''
 
 N = NN()
 N.add_layer(ConvLayer3(dim=(3,3,3)))
@@ -185,3 +228,4 @@ N = NN()
 N.add_layer(DotLayer(dim=(13,1)))
 N.fit_converge(X_train,T_train, X_test, T_test)
 
+'''

@@ -8,20 +8,12 @@ from sklearn.ensemble import RandomForestClassifier
 import sys
 sys.path.insert(0, '..') # Pull in helper file
 from helper import *
+from Neural import *
 
 # Read in the data
 
 df_train = pd.read_table('train.csv', sep=",")
 df_test  = pd.read_table('test.csv', sep=",")
-
-# Create the model
-
-N = NN()
-N.add_layer(DotLayer(dim=(54,50)))
-N.add_layer(PureLayer(mapping=Tanh))
-N.add_layer(DotLayer(dim=(50,7)))
-
-
 
 # Should really take the angles and break them out
 # into their sin, cos portions
@@ -48,22 +40,36 @@ mapper.add_X(soil_cols)
 wilderness_cols = filter(lambda x: 'Wilderness_Area' in x, df_train.columns)
 mapper.add_X(wilderness_cols)
 
-mapper.add_Y('Cover_Type')
+mapper.add_Y('Cover_Type', LabelBinarizer())
 
-
+#X,Y = mapper.fit_transform(df_train)
 
 org = Org()
 org.mapper = mapper
 
+# Create the model
+N = NN(n_iter = 100000, type='C', noisy=.1)
+N.add_layer(DotLayer(dim=(54,50)))
+N.add_layer(TanhLayer())
+N.add_layer(DotLayer(dim=(50,7)))
+N.add_layer(SigLayer())
 
+org.models = [N]
+print org.cross_validate(df_train, ravel=False)
+'''
+org.fit(df_train, ravel=False)
 
-
-org.models = [RandomForestClassifier(n_estimators=500, n_jobs=-1)]
-#print org.cross_validate(df_train)
-org.fit(df_train)
-
-results = org.predict(df_test, as_df=True)
+results = org.predict(df_test, as_df=False)
 
 first_result = results[0]
-first_result.columns = ['Id', 'Cover_Type']
-first_result.to_csv('results3_mine.csv', index=False)
+l = mapper.dict_mapping[('Cover_Type',)]['pipeline'][0]
+guesses = l.inverse_transform(first_result[:, 1:])
+
+index = col(first_result[:,0])
+guesses = col(guesses)
+output = np.hstack([index, guesses]).astype(int)
+
+result_df = pd.DataFrame(output)
+result_df.columns = ['Id', 'Cover_Type']
+result_df.to_csv('results_nn_1.csv', index=False)
+'''
