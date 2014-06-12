@@ -129,20 +129,31 @@ class Org:
 
     output = []
     for model in self.models:
+
       cv = sklearn.cross_validation.ShuffleSplit(len(X), n_iter=2, test_size=.2, random_state=self.random_seed)
+      
+      '''
+      local_scores = []
+      for train, test in cv:
+        model.fit(X[train], Y[train])
+        import ipdb; ipdb.set_trace()
+        score = model.score(X[test], Y[test])
+        local_scores.append(score)
+      output.append(local_scores)
+      '''
       #import ipdb; ipdb.set_trace() 
       scores = sklearn.cross_validation.cross_val_score(model, X, Y, cv=cv)
-      #output.append('%0.3f' % scores.mean())
       output.append(scores)
+      
     return output
 
   def fit(self, df, ravel=True):
     X,Y = self.mapper.fit_transform(df)
+    if ravel:
+      Y = np.ravel(Y)
+
     for model in self.models:
-      if ravel:
-        model.fit(X,np.ravel(Y))
-      else:
-        model.fit(X, Y)
+      model.fit(X, Y)
   def predict(self,df, as_df=False):
     X, _ = self.mapper.fit_transform(df)
     output = []

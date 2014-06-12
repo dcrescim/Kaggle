@@ -16,8 +16,9 @@ import operator
   Alternative Implementation of Layers
 '''
 
-# Covers Tanh, Sig, Rect
-class PureLayer(PureObject):
+
+# Covers HardTanh, Tanh, Sig, Rect
+class FunctionLayer(PureObject):
   def __init__(self, mapping):
     self.mapping = mapping
 
@@ -31,26 +32,39 @@ class PureLayer(PureObject):
   def west_partial(self, partials):
     return partials*self.mapping.grad(self.X)
 
-  def delta_iterator(self):
+  def delta_iterator(self, partials):
     return []
-    
-  def __repr__(self):
-    return "Pure Layer: Func = " + str(self.mapping)
 
-class TanhLayer(PureLayer):
+  '''
+  def get_params(self, deep=True):
+    return {'mapping': self.mapping}
+
+  # Writes actual contents. No copies.
+  def set_params(self, **params):
+    for parameter, value in params.items():
+      self.__setattr__(parameter, value)
+  '''
+  def __repr__(self):
+    return "Function Layer: Func = " + str(self.mapping)
+
+class HardTanhLayer(FunctionLayer):
+  def __init__(self):
+    super(HardTanhLayer, self).__init__(mapping=HardTanh)
+
+class TanhLayer(FunctionLayer):
   def __init__(self):
     super(TanhLayer, self).__init__(mapping=Tanh)
 
-class RectLayer(PureLayer):
+class RectLayer(FunctionLayer):
   def __init__(self):
     super(RectLayer, self).__init__(mapping=Rect)
 
-class SigLayer(PureLayer):
+class SigLayer(FunctionLayer):
   def __init__(self):
     super(SigLayer, self).__init__(mapping=Sig)
 
 # Covers mean layer
-class MeanLayer:
+class MeanLayer(PureObject):
   def __init__(self, dim):
     self.dim = dim
     self.units_per_block = float(reduce(operator.mul, dim))
@@ -61,12 +75,21 @@ class MeanLayer:
 
   def north_partial(self, partials):
     return []
-    
+
   # Need to check this
   def west_partial(self, partials):
     return np.kron(partials, np.ones(self.dim))/ self.units_per_block
 
-  def delta_iterator(self):
+  def get_params(self, deep=True):
+    return {'dim': self.dim}
+
+  # Writes actual contents. No copies.
+  def set_params(self, **params):
+    for parameter, value in params.items():
+      self.__setattr__(parameter, value)
+
+
+  def delta_iterator(self, partials):
     return []
 
   def __repr__(self):
@@ -124,16 +147,14 @@ class DotLayer(object):
     for parameter, value in params.items():
       self.__setattr__(parameter, value)
 
-
   def __eq__(self, other):
     return ((type(self) == type(other)) and
             (np.allclose(self.W, other.W)) and
             (np.allclose(self.b, other.b))
            )
-  '''
+
   def __repr__(self):
     return "DotLayer W dim= %s b dim=%s" % (str(self.W.shape), str(self.b.shape))
-  '''
 
 '''
 Simple Convolution Layer dim=2D, numb_kernels = n

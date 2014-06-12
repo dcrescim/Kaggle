@@ -14,7 +14,13 @@ class PureObject(object):
   def __eq__(self, other):
     return (type(self) == type(other))
 
-class CrossEntropyError(PureObject):
+class ErrorMixin(object):
+  direction = -1
+
+class ScoreMixin(object):
+  direction = 1
+
+class CrossEntropyError(PureObject, ErrorMixin):
 
   @staticmethod
   def func(Y,T):
@@ -30,7 +36,7 @@ class CrossEntropyError(PureObject):
     denom = 1.0/np.multiply(Y, 1-Y)
     return np.multiply(diff, denom)/rows
 
-class SquaredError(PureObject):
+class SquaredError(PureObject, ErrorMixin):
   @staticmethod
   def func(Y,T):
     m = Y.shape[0] * 1.0 # Force into real number
@@ -43,6 +49,37 @@ class SquaredError(PureObject):
     rows = Y.shape[0] * 1.0# Force into real number
     diff = Y-T
     return diff/rows
+
+
+class AccuracyScore(PureObject, ScoreMixin):
+
+  @staticmethod
+  def func(Y,T):
+    count = 0
+    diff = Y - T
+    for el in diff:
+      if not np.any(el):
+        count += 1
+
+    return float(count)/(len(diff))
+
+class AccuracyError(PureObject, ErrorMixin):
+
+  @staticmethod
+  def func(Y,T):
+    count = 0
+    diff = Y - T
+    for el in diff:
+      if np.any(el):
+        count += 1
+
+    return float(count)/(len(diff))
+
+
+a1 = np.array([1,2,3,4])
+a2 = np.array([2,2,3,4])
+a3 = np.array([[1,2],[3,4]])
+a4 = np.array([[1,2],[4,4]])
 
 '''
   Matrix Functions
@@ -66,6 +103,22 @@ class Tanh(PureObject):
   @staticmethod
   def grad(x):
     return 4/((np.exp(x) + np.exp(-x)))**2
+
+
+class HardTanh(PureObject):
+  @staticmethod
+  def func(x):
+    if x > 1: 
+      return 1
+    elif x < -1: 
+      return -1
+    return x
+
+  def grad(x):
+    if (x > 1) or (x < -1):
+      return 0
+    else:
+      return 1
 
 class Rect(PureObject):
 
