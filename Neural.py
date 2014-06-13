@@ -8,7 +8,7 @@ from layers import *
 from functions import *
 import ipdb
 import copy
-
+import pickle
 epsilon = 10**(-8)
 
 '''
@@ -26,15 +26,16 @@ http://scikit-learn.org/stable/developers/index.html#cloning
 
 class NNBase(BaseEstimator):
 
-  def __init__(self,layers = [], lr=0.01, n_iter=1000, noisy=None, verbose=False):
+  def __init__(self,layers = [], lr=0.01, n_iter=1000, noisy=None, verbose=False, file=None):
     self.layers = copy.deepcopy(layers)
     self.lr = lr
     self.n_iter = n_iter
     self.noisy = noisy
     self.verbose = verbose
-
+    self.file = file
     self.dataset_index = 0
     self.epoch_index = 0
+    self.test_index = 0
 
   def add_layer(self, layer):
     self.layers.append(layer)
@@ -136,10 +137,9 @@ class NNBase(BaseEstimator):
 
     return all_gradients
 
-  def pickle():
+  def pickle(self, filename):
     pass
-
-  def unpickle():
+  def unpickle(self):
     pass
 
 class NN_Classifier(NNBase):
@@ -155,6 +155,7 @@ class NN_Classifier(NNBase):
 
   def predict(self, X):
     current_results = NNBase._predict(self, X)
+    # Break out the loop here
     current_results = coalesce(current_results)
     return self.label_binarizer.inverse_transform(current_results)
 

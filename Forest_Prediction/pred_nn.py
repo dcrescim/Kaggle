@@ -9,7 +9,8 @@ import sys
 sys.path.insert(0, '..') # Pull in helper file
 from helper import *
 from Neural import *
-
+import pickle
+from sklearn.externals import joblib
 # Read in the data
 
 df_train = pd.read_table('train.csv', sep=",")
@@ -47,18 +48,27 @@ org = Org()
 org.mapper = mymapper
 
 # Create the model
-N = NN_Classifier(n_iter = 100)
+#N = NN_Classifier(file="nn_dump.pkl")
+#N = joblib.load("nn_dump.pkl")
+'''
+N = NN_Classifier(n_iter = 10000)
 N.add_layer(DotLayer(dim=(54,50)))
 N.add_layer(TanhLayer())
 N.add_layer(DotLayer(dim=(50,7)))
 N.add_layer(SigLayer())
 
 org.models = [N, LinearSVC()]
+'''
+org.unpickle()
 #print org.cross_validate(df_train, ravel=False)
 org.fit(df_train)
+#org.pickle()
 results = org.predict(df_test, as_df=True)
-
+results['diff'] = results['LinearSVC'] - results['NN_Classifier']
+org.models[1].nn_iter = 100000
+org.pickle()
 '''
+
 result_df = pd.DataFrame(output)
 result_df.columns = ['Id', 'Cover_Type']
 result_df.to_csv('results_nn_1.csv', index=False)

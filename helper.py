@@ -2,7 +2,9 @@ from collections import OrderedDict
 import numpy as np
 import sklearn
 import ipdb
+import glob
 import pandas as pd
+from sklearn.externals import joblib
 def isinstance_func(x):
   return hasattr(x, '__call__')
 
@@ -131,6 +133,8 @@ class Org:
     for model in self.models:
 
       cv = sklearn.cross_validation.ShuffleSplit(len(X), n_iter=2, test_size=.2, random_state=self.random_seed)
+      scores = sklearn.cross_validation.cross_val_score(model, X, Y, cv=cv)
+      output.append(scores)
       
       '''
       local_scores = []
@@ -142,10 +146,21 @@ class Org:
       output.append(local_scores)
       '''
       #import ipdb; ipdb.set_trace() 
-      scores = sklearn.cross_validation.cross_val_score(model, X, Y, cv=cv)
-      output.append(scores)
       
     return output
+
+  def pickle(self):
+    for model in self.models:
+      joblib.dump(model, type(model).__name__ + ".pkl", compress=9)
+   
+  def unpickle(self):
+    self.models = []
+    models = glob.glob("*.pkl")
+    for model in models:
+      clf = joblib.load(model)
+      self.models.append(clf)
+    # Get all files ending in .pkl
+    # Load em up
 
   def fit(self, df, ravel=True):
     X,Y = self.mapper.fit_transform(df)
@@ -154,16 +169,24 @@ class Org:
 
     for model in self.models:
       model.fit(X, Y)
+  
   def predict(self,df, as_df=False):
     X, _ = self.mapper.fit_transform(df)
     output = []
     for model in self.models:
       results = model.predict(X)
-      final = np.hstack([self.mapper.index, col(results)])
-      if as_df:
-        final = pd.DataFrame(final)
-      output.append(final)
-    return output
+      output.append(col(results))
+
+    output.insert(0, self.mapper.index)
+    final = np.hstack(output)
+    if as_df:
+      final = pd.DataFrame(final)
+      column_names = ['index']
+      for model in self.models:
+        name = type(model).__name__
+        column_names.append(name)
+      final.columns = column_names
+    return final
 
 
 

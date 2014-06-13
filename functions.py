@@ -75,7 +75,6 @@ class AccuracyError(PureObject, ErrorMixin):
 
     return float(count)/(len(diff))
 
-
 a1 = np.array([1,2,3,4])
 a2 = np.array([2,2,3,4])
 a3 = np.array([[1,2],[3,4]])
