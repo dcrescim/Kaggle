@@ -1,12 +1,9 @@
-from collections import OrderedDict
 import numpy as np
 import sklearn
 import ipdb
 import glob
-import pandas as pd
 from sklearn.externals import joblib
-def isinstance_func(x):
-  return hasattr(x, '__call__')
+import pandas as pd
 
 # Takes numpy array, and returns a row array
 def row(arr):
@@ -18,103 +15,6 @@ def col(arr):
   if len(arr.shape) == 1:
     return arr.reshape(len(arr), 1)
   return arr
-
-class Mapper:
-  def __init__(self):
-    self.dict_mapping = OrderedDict()
-    self.index = None
-  # Key is a column of the original data
-  # function list is a list of one of the following
-  #   - A class that implements the Transformer API
-  #   - A function
-  def _add(self, key, function_list, is_X, is_Y, is_index, as_col=True):
-    
-    if not isinstance(function_list, list):
-      function_list = [function_list]
-
-    if isinstance(key, str):
-      key = tuple([key])
-
-    if not isinstance(key, tuple):
-      key = tuple(key)
-
-
-    dict_values = {}
-    dict_values['pipeline'] = function_list
-    dict_values['is_X'] = is_X
-    dict_values['is_Y'] = is_Y
-    dict_values['is_index'] = is_index
-    dict_values['as_col'] = as_col
-
-    self.dict_mapping[key] = dict_values
-  
-  def add_X(self, key, function_list=[], as_col = True):
-    self._add(key, function_list, is_X=True, is_Y=False, is_index=False, as_col=as_col)
-
-  def add_Y(self, key, function_list=[], as_col = True):
-    self._add(key, function_list, is_X=False, is_Y=True, is_index=False, as_col=as_col)
-
-  def add_index(self, key, function_list=[], as_col=True):
-    self._add(key, function_list, is_X=False, is_Y=False, is_index=True, as_col=as_col)
-
-  def evaluate(self, key, dict_options, df):
-    for el in key:
-      if (el not in df):
-        # If you are missing an X column, this is bad. 
-        #   You should find it.
-        if dict_options['is_X']:
-          ValueError("The column %s is not in your dataframe" % key)
-        
-        # If you are missing Y columns, that is not a big deal
-        #   You could just be transforming the test set.
-        if dict_options['is_Y']:
-          return None
-
-    if dict_options['as_col']:
-      cur_val = col(df[list(key)].values)
-    else:
-      cur_val = df[key]
-
-    for f in dict_options['pipeline']:
-      if isinstance_func(f):
-        cur_val = f(cur_val)
-      else:
-        cur_val = f.fit_transform(cur_val)
-
-    return cur_val
-
-
-  def fit_transform(self, df):
-    results_X = []
-    results_Y = []
-    for (key, dict_options) in self.dict_mapping.iteritems():
-      cur_val = self.evaluate(key,dict_options, df)
-
-      # This occurs when you are trying to evaluate
-      # a key that is not in the dataframe
-      if cur_val == None:
-        continue
-
-      if dict_options['is_X']:
-        results_X.append(cur_val)
-      if dict_options['is_Y']:
-        results_Y.append(cur_val)
-      if dict_options['is_index']:
-        self.index = cur_val
-
-    # Can't np.hstack an empty list
-    if not results_X:
-      X_results = np.array([])
-    else:
-      X_results = np.hstack(results_X)
-
-    if not results_Y:
-      Y_results = np.array([])
-    else:
-      Y_results = np.hstack(results_Y)
-
-    return X_results, Y_results
-
 
 class Org:
   def __init__(self):
@@ -134,19 +34,7 @@ class Org:
 
       cv = sklearn.cross_validation.ShuffleSplit(len(X), n_iter=2, test_size=.2, random_state=self.random_seed)
       scores = sklearn.cross_validation.cross_val_score(model, X, Y, cv=cv)
-      output.append(scores)
-      
-      '''
-      local_scores = []
-      for train, test in cv:
-        model.fit(X[train], Y[train])
-        import ipdb; ipdb.set_trace()
-        score = model.score(X[test], Y[test])
-        local_scores.append(score)
-      output.append(local_scores)
-      '''
-      #import ipdb; ipdb.set_trace() 
-      
+      output.append(scores)      
     return output
 
   def pickle(self):
@@ -171,7 +59,8 @@ class Org:
       model.fit(X, Y)
   
   def predict(self,df, as_df=False):
-    X, _ = self.mapper.fit_transform(df)
+    #import ipdb; ipdb.set_trace()
+    X, _ = self.mapper.transform(df)
     output = []
     for model in self.models:
       results = model.predict(X)
@@ -187,6 +76,16 @@ class Org:
         column_names.append(name)
       final.columns = column_names
     return final
+
+
+
+  def write_to_file(self,df, column_names, model_names):
+    #import ipdb; ipdb.set_trace()
+    for model in model_names:
+      small_df = df[['index', model]]
+      small_df.columns = column_names
+      small_df.to_csv(model +'.csv', index=False)
+
 
 
 
