@@ -1,0 +1,25 @@
+Basically we are trying to predict what the demand will be for bikes over every hour interval in the last third of the month.
+
+Things I did:
+1. Break out the categorical columns like
+  'weather', and 'season'
+
+2. Take the datetime, and turned that into an 
+  angle and broke out the sin, cos portions
+
+3. Took the datetime and broke out the hour,
+  into a categorical column (like 0, 1, ..., 23). 
+  Then I broke out that categorical variable into 
+  24 binary columns. 
+
+
+Things I tried:
+1. LinearSVC
+  Eh, not that great.
+2. RandomTreesRegressor
+  Not sure why I check this model, when the ExtraTrees model always seems to do better.
+3. ExtraTreesRegressor
+  Best model so far. 
+
+Some stuff that I still want to try
+- 1. Try to predict not the total count, but the individual counts (registered and not) that combine into the total count. Maybe a model for each. 

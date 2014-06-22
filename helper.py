@@ -32,9 +32,9 @@ class Org:
     output = []
     for model in self.models:
 
-      cv = sklearn.cross_validation.ShuffleSplit(len(X), n_iter=2, test_size=.2, random_state=self.random_seed)
+      cv = sklearn.cross_validation.ShuffleSplit(len(X), n_iter=6, test_size=.2, random_state=self.random_seed)
       scores = sklearn.cross_validation.cross_val_score(model, X, Y, cv=cv)
-      output.append(scores)      
+      output.append(scores.mean())      
     return output
 
   def pickle(self):

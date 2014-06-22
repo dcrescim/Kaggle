@@ -5,6 +5,7 @@ from sklearn.preprocessing import Imputer, LabelBinarizer, StandardScaler, Label
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import LinearSVC
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import ExtraTreesClassifier
 import sys
 sys.path.insert(0, '..') # Pull in helper file
 from helper import *
@@ -15,30 +16,21 @@ df_test  = pd.read_table('test.csv', sep=",")
 # Should really take the angles and break them out
 # into their sin, cos portions
 
-'''
-Scaled version
-mapper.add_X('Elevation', StandardScaler())
-mapper.add_X('Aspect', StandardScaler())
-mapper.add_X('Slope', StandardScaler())
+def map_cos(angle_degrees):
+  return np.cos(angle_degrees*np.pi/180)
 
-mapper.add_X(['Horizontal_Distance_To_Hydrology', 
-              'Vertical_Distance_To_Hydrology',
-              'Horizontal_Distance_To_Roadways',
-              'Horizontal_Distance_To_Fire_Points'], StandardScaler())
+def map_sin(angle_degrees):
+  return np.sin(angle_degrees*np.pi/180)
 
-
-mapper.add_X(['Hillshade_9am',
-              'Hillshade_Noon',
-              'Hillshade_3pm'], StandardScaler())
-
-'''
 
 mapper = Mapper()
 mapper.add_index('Id')
 mapper.add_X('Elevation')
 
-mapper.add_X('Aspect')
-mapper.add_X('Slope')
+mapper.add_X('Aspect', map_cos)
+mapper.add_X('Aspect', map_sin)
+mapper.add_X('Slope', map_cos)
+mapper.add_X('Slope', map_sin)
 
 mapper.add_X(['Horizontal_Distance_To_Hydrology', 
               'Vertical_Distance_To_Hydrology',
@@ -57,18 +49,16 @@ mapper.add_X(wilderness_cols)
 
 mapper.add_Y('Cover_Type')
 
-
-#X,Y = mapper.fit_transform(df_train)
-#X_test, _ = mapper.fit_transform(df_test)
-
 org = Org()
 org.mapper = mapper
-org.models = [RandomForestClassifier(n_estimators=500, n_jobs=-1)]
+R = RandomForestClassifier(n_estimators=300, n_jobs=-1)
+E = ExtraTreesClassifier(n_estimators=300, n_jobs=-1)
+org.models = [R,E]
 #print org.cross_validate(df_train)
 org.fit(df_train)
 
 results = org.predict(df_test, as_df=True)
-
-first_result = results[0]
-first_result.columns = ['Id', 'Cover_Type']
-first_result.to_csv('results3_mine.csv', index=False)
+org.write_to_file(results, ['Id', 'Cover_Type'], ['RandomForestClassifier', 'ExtraTreesClassifier'])
+#first_result = results[0]
+#first_result.columns = ['Id', 'Cover_Type']
+#first_result.to_csv('results3_mine.csv', index=False)

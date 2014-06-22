@@ -7,9 +7,16 @@ Quirks:
   - Also the ticket column is very mysterious, sometimes its a number, other times there are random characters in front. Very weird.
   - 2 missing values for embarked. Gonna have to impute those as well.
 
+Things I tried:
+- 1. LinearSVC
+  Not super hot.
+- 2. Random Forest
+  Better than the extra trees classifier this time
+- 3. Extra Trees Classifier
 
-Moves:
-  - I always break out the categorical variables into their one-hot encoding (Pclass, Sex, Embarked)
-  - I broke the cabin letter out into it's own categorical column
-  - I ignored Name and Ticket Numb
-  - For all other variables, I subtracted the mean, and divided by the variance (Age, SibSp, Parch, Fare)
+
+
+
+Things I want to do
+- Break the cabin letter out into its own categorical column
+- Try some naive bayes

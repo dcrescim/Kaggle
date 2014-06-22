@@ -1,0 +1,27 @@
+Basically we are trying to what forest type (1-7) a particular configuration of variables is. 
+
+There is not too much to do with the dataset. Most of the variables are separated pretty well. Some things I have left to try.
+
+- 1. Elevation, and Aspect
+    We could break these angles out into their cos, and sin portions.
+- 2. Hillshade at 9,12,3
+    We could do the same thing here, consider the index 0-255, an angle and break it out. Something like
+
+    angle = (index/255)*pi/180
+
+    Then break out the angle into its sin and cos portions.
+
+Things I tried:
+- LinearSVC
+  Results were ok. Had to Standard Scale everything of course. Nothing spectacular though.
+- Random Forest
+  A bunch of trees (~300) got pretty good results.
+- ExtraTrees Forest
+  Better than the RandomForest. Best model so far
+
+At this point, I "exploded" the columns, namely took every choice of two features (x_1, and x_2), and turned them into a synthetic feature (x_1*x_2) and then appended that onto the dataset.
+
+Everyone one of the previous models, got better after the explosion, with the ExtraTrees Forest jumping up to number 5 on the leaderboard.
+
+It is still very early in the competition, so I'm sure that will drop, and we will have to devise crazier strategies.
+
